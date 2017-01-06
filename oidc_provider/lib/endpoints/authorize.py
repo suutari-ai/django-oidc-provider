@@ -19,12 +19,7 @@ from oidc_provider.lib.errors import (
     ClientIdError,
     RedirectUriError,
 )
-from oidc_provider.lib.utils.token import (
-    create_code,
-    create_id_token,
-    create_token,
-    encode_id_token,
-)
+from oidc_provider.lib.utils.token import get_token_module
 from oidc_provider.models import (
     Client,
     UserConsent,
@@ -56,6 +51,8 @@ class AuthorizeEndpoint(object):
 
         # Determine if it's an OpenID Authentication request (or OAuth2).
         self.is_authentication = 'openid' in self.params['scope']
+
+        self.token_mod = get_token_module()
 
     def _extract_params(self):
         """
@@ -126,7 +123,7 @@ class AuthorizeEndpoint(object):
 
         try:
             if self.grant_type in ['authorization_code', 'hybrid']:
-                code = create_code(
+                code = self.token_mod.create_code(
                     user=self.request.user,
                     client=self.client,
                     scope=self.params['scope'],
@@ -140,7 +137,7 @@ class AuthorizeEndpoint(object):
                 query_params['code'] = code.code
                 query_params['state'] = self.params['state'] if self.params['state'] else ''
             elif self.grant_type in ['implicit', 'hybrid']:
-                token = create_token(
+                token = self.token_mod.create_token(
                     user=self.request.user,
                     client=self.client,
                     scope=self.params['scope'])
@@ -153,7 +150,7 @@ class AuthorizeEndpoint(object):
                 if self.is_authentication:
                     kwargs = {
                         'user': self.request.user,
-                        'aud': self.client.client_id,
+                        'client': self.client,
                         'nonce': self.params['nonce'],
                         'request': self.request,
                         'scope': self.params['scope'],
@@ -161,11 +158,11 @@ class AuthorizeEndpoint(object):
                     # Include at_hash when access_token is being returned.
                     if 'access_token' in query_fragment:
                         kwargs['at_hash'] = token.at_hash
-                    id_token_dic = create_id_token(**kwargs)
+                    id_token_dic = self.token_mod.create_id_token(**kwargs)
 
                     # Check if response_type must include id_token in the response.
                     if self.params['response_type'] in ['id_token', 'id_token token', 'code id_token', 'code id_token token']:
-                        query_fragment['id_token'] = encode_id_token(id_token_dic, self.client)
+                        query_fragment['id_token'] = self.token_mod.encode_id_token(id_token_dic, self.client)
                 else:
                     id_token_dic = {}
 

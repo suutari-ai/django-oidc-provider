@@ -100,6 +100,13 @@ class DefaultSettings(object):
         return 60*60
 
     @property
+    def OIDC_TOKEN_MODULE(self):
+        """
+        OPTIONAL. Module for creating tokens.
+        """
+        return 'oidc_provider.lib.utils.token.TokenModule'
+
+    @property
     def OIDC_USERINFO(self):
         """
         OPTIONAL. A string with the location of your function.

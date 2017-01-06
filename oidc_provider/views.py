@@ -35,7 +35,7 @@ from oidc_provider.lib.utils.common import (
     get_issuer,
 )
 from oidc_provider.lib.utils.oauth2 import protected_resource_view
-from oidc_provider.lib.utils.token import client_id_from_id_token
+from oidc_provider.lib.utils.token import get_token_module
 from oidc_provider.models import (
     Client,
     RESPONSE_TYPE_CHOICES,
@@ -254,6 +254,9 @@ class JwksView(View):
 
 
 class EndSessionView(View):
+    def __init__(self, *args, **kwargs):
+        super(EndSessionView, self).__init__(*args, **kwargs)
+        self.token_mod = get_token_module()
 
     def get(self, request, *args, **kwargs):
         id_token_hint = request.GET.get('id_token_hint', '')
@@ -263,7 +266,7 @@ class EndSessionView(View):
         next_page = settings.get('LOGIN_URL')
 
         if id_token_hint:
-            client_id = client_id_from_id_token(id_token_hint)
+            client_id = self.token_mod.client_id_from_id_token(id_token_hint)
             try:
                 client = Client.objects.get(client_id=client_id)
                 if post_logout_redirect_uri in client.post_logout_redirect_uris:

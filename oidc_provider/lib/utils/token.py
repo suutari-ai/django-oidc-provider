@@ -18,6 +18,42 @@ from oidc_provider.models import (
 from oidc_provider import settings
 
 
+def get_token_module():
+    """
+    Get the token module as defined by the settings.
+
+    :rtype: TokenModule
+    """
+    return settings.get('OIDC_TOKEN_MODULE', import_str=True)()
+
+
+class TokenModule(object):
+    def create_id_token(self, user, client, nonce='', at_hash='',
+                        request=None, scope=[]):
+        return create_id_token(user, client.client_id, nonce, at_hash,
+                               request, scope)
+
+    def encode_id_token(self, payload, client):
+        return encode_id_token(payload, client)
+
+    def decode_id_token(self, token, client):
+        return decode_id_token(token, client)
+
+    def client_id_from_id_token(self, id_token):
+        return client_id_from_id_token(id_token)
+
+    def create_token(self, user, client, scope, id_token_dic=None):
+        return create_token(user, client, scope, id_token_dic)
+
+    def create_code(self, user, client, scope, nonce, is_authentication,
+                    code_challenge=None, code_challenge_method=None):
+        return create_code(user, client, scope, nonce, is_authentication,
+                           code_challenge, code_challenge_method)
+
+    def get_client_alg_keys(self, client):
+        return get_client_alg_keys(client)
+
+
 def create_id_token(user, aud, nonce='', at_hash='', request=None, scope=[]):
     """
     Creates the id_token dictionary.

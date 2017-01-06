@@ -15,11 +15,7 @@ from django.http import JsonResponse
 from oidc_provider.lib.errors import (
     TokenError,
 )
-from oidc_provider.lib.utils.token import (
-    create_id_token,
-    create_token,
-    encode_id_token,
-)
+from oidc_provider.lib.utils.token import get_token_module
 from oidc_provider.models import (
     Client,
     Code,
@@ -37,6 +33,7 @@ class TokenEndpoint(object):
         self.request = request
         self.params = {}
         self._extract_params()
+        self.token_mod = get_token_module()
 
     def _extract_params(self):
         client_id, client_secret = self._extract_client_auth()
@@ -144,15 +141,15 @@ class TokenEndpoint(object):
             return self.create_refresh_response_dic()
 
     def create_code_response_dic(self):
-        token = create_token(
+        token = self.token_mod.create_token(
             user=self.code.user,
             client=self.code.client,
             scope=self.code.scope)
 
         if self.code.is_authentication:
-            id_token_dic = create_id_token(
+            id_token_dic = self.token_mod.create_id_token(
                 user=self.code.user,
-                aud=self.client.client_id,
+                client=self.client,
                 nonce=self.code.nonce,
                 at_hash=token.at_hash,
                 request=self.request,
@@ -173,22 +170,22 @@ class TokenEndpoint(object):
             'refresh_token': token.refresh_token,
             'token_type': 'bearer',
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
-            'id_token': encode_id_token(id_token_dic, token.client),
+            'id_token': self.token_mod.encode_id_token(id_token_dic, token.client),
         }
 
         return dic
 
     def create_refresh_response_dic(self):
-        token = create_token(
+        token = self.token_mod.create_token(
             user=self.token.user,
             client=self.token.client,
             scope=self.token.scope)
 
         # If the Token has an id_token it's an Authentication request.
         if self.token.id_token:
-            id_token_dic = create_id_token(
+            id_token_dic = self.token_mod.create_id_token(
                 user=self.token.user,
-                aud=self.client.client_id,
+                client=self.client,
                 nonce=None,
                 at_hash=token.at_hash,
                 request=self.request,
@@ -209,7 +206,7 @@ class TokenEndpoint(object):
             'refresh_token': token.refresh_token,
             'token_type': 'bearer',
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
-            'id_token': encode_id_token(id_token_dic, self.token.client),
+            'id_token': self.token_mod.encode_id_token(id_token_dic, self.token.client),
         }
 
         return dic
