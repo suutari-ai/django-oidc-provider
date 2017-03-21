@@ -153,7 +153,7 @@ class TokenEndpoint(object):
                 nonce=self.code.nonce,
                 at_hash=token.at_hash,
                 request=self.request,
-                scope=self.params['scope'],
+                scope=(self.params['scope'] or token.scope),
             )
         else:
             id_token_dic = {}
